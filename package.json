@@ -21,7 +21,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.2.1",
+    "@google/genai": "~1.13.0",
     "axios": "^1.6.0",
     "chalk": "^4.1.2",
     "env-paths": "^2.2.1",

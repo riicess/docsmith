@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const chalk = require('chalk');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 
 const { getApiKey } = require('./config');
 const { fetchRepoMetadata, getCurrentRepoUrl } = require('./github');
@@ -149,16 +149,13 @@ async function generateReadmeContent(githubData, localData, badges) {
     printInfo('Generating README content with AI...');
     
     const apiKey = await getApiKey();
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = buildAIPrompt(githubData, localData, badges);
-    
-    const result = await retryWithBackoff(async () => {
-      const response = await model.generateContent(prompt);
-      return response.response.text();
-    }, 3, 2000);
-    
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: prompt
+    });
+    const result = response.text;
     return result;
   } catch (error) {
     if (error.message.includes('API key')) {
