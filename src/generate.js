@@ -4,9 +4,12 @@ const chalk = require('chalk');
 const { GoogleGenAI } = require('@google/genai');
 
 const { getApiKey } = require('./config');
-const { fetchRepoMetadata, getCurrentRepoUrl } = require('./github');
+const { fetchRepoMetadata, getCurrentRepoUrl, cloneRepo } = require('./github');
 const { analyzeLocalProject } = require('./localMeta');
 const { generateAllBadges, formatBadgesMarkdown } = require('./badges');
+const { getProjectTreeAndContents } = require('./fileReader');
+const tmp = require('tmp');
+const fse = require('fs-extra');
 const { 
   confirmOverwrite, 
   isGitRepository, 
@@ -26,12 +29,15 @@ function buildAIPrompt(githubData, localData, badges, extraPrompt = '') {
   if (githubData) {
     metadataSection += `GitHub Metadata:\nName: ${githubData.name}\nDescription: ${githubData.description}\nStars: ${githubData.stars}\nForks: ${githubData.forks}\nLanguage: ${githubData.language}\nLicense: ${githubData.license}\nTopics: ${(githubData.topics || []).join(', ')}\n`;
   }
-  if (localData && localData.files && localData.files['package.json']) {
-    const pkg = localData.files['package.json'];
-    metadataSection += `\npackage.json:\nName: ${pkg.name}\nDescription: ${pkg.description}\nVersion: ${pkg.version}\nScripts: ${Object.keys(pkg.scripts || {}).join(', ')}\nDependencies: ${(pkg.dependencies || []).join(', ')}\n`;
+  if (localData && localData.fileTree) {
+    metadataSection += `\nProject Structure:\n\`\`\`\n${localData.fileTree}\n\`\`\`\n`;
   }
-  if (localData && localData.summary && localData.summary.length > 0) {
-    metadataSection += `\nProject Summary:\n${localData.summary.join('\n')}\n`;
+  if (localData && localData.fileContents) {
+    metadataSection += `\nFile Contents:\n`;
+    for (const [file, content] of Object.entries(localData.fileContents)) {
+      const language = file.split('.').pop();
+      metadataSection += `\n**${file}**\n\`\`\`${language}\n${content}\n\`\`\`\n`;
+    }
   }
   let prompt = `Please generate a comprehensive README.md for this project.\n\n${metadataSection}\n- Use only the provided project metadata and files. Do not invent features or commands that are not present in the data.\n- Analyze the provided files and metadata to determine the project type (e.g., CLI tool, library, backend, frontend, website, or any other type).\n- Adapt the Usage section and other content to fit the detected project type, showing only the most relevant usage examples and instructions.\n- If the user provides extra instructions, follow them and override the default style or detail as needed.\n\nDO NOT include the badges in your response - they will be prepended automatically.\n\nGenerate only the README content, starting with the project title as an H1 header.`;
   if (extraPrompt && extraPrompt.trim()) {
@@ -90,19 +96,13 @@ async function docify(url = null, isDryRun = false, extraPrompt = '', debug = fa
       // Remote repository mode
       printInfo(`Fetching data from: ${url}`);
       githubData = await fetchRepoMetadata(url);
-      
-      // Also try to analyze local directory if it's a git repo
-      if (await isGitRepository()) {
-        try {
-          const currentRepoUrl = await getCurrentRepoUrl();
-          // Check if local repo matches the provided URL
-          if (currentRepoUrl.includes(githubData.name)) {
-            printInfo('Local directory matches remote repository, analyzing local files...');
-            localData = await analyzeLocalProject(workingDir);
-          }
-        } catch (error) {
-          console.log(chalk.gray('Could not match local repository with remote URL'));
-        }
+
+      const tempDir = tmp.dirSync({ unsafeCleanup: true });
+      try {
+        await cloneRepo(githubData.cloneUrl, tempDir.name);
+        localData = await getProjectTreeAndContents(tempDir.name);
+      } finally {
+        tempDir.removeCallback();
       }
     } else {
       // Local repository mode

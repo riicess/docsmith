@@ -168,8 +168,8 @@ function generateAllBadges(githubData = null, localData = null, options = {}) {
     const licenseBadge = generateLicenseBadge(githubData.license, badgeOpts);
     if (licenseBadge) importantBadges.push(licenseBadge);
   }
-  if (localData && localData.files && localData.files['package.json']) {
-    const pkg = localData.files['package.json'];
+  if (localData && localData.fileContents && localData.fileContents['package.json']) {
+    const pkg = JSON.parse(localData.fileContents['package.json']);
     const versionBadge = generateVersionBadge(pkg.version, 'npm', pkg.name, badgeOpts);
     if (versionBadge) importantBadges.push(versionBadge);
   }
@@ -190,21 +190,21 @@ function generateAllBadges(githubData = null, localData = null, options = {}) {
   }
   
   // Local project badges
-  if (localData) {
+  if (localData && localData.fileContents) {
     // Docker badge
-    const dockerBadge = generateDockerBadge(!!localData.files['Dockerfile']);
+    const dockerBadge = generateDockerBadge(!!localData.fileContents['Dockerfile']);
     if (dockerBadge) badges.push(dockerBadge);
   }
   
   // If we only have local data and no GitHub data, try to extract language from local files
-  if (!githubData && localData) {
+  if (!githubData && localData && localData.fileContents) {
     let detectedLanguage = null;
     
-    if (localData.files['package.json']) {
+    if (localData.fileContents['package.json']) {
       detectedLanguage = 'JavaScript';
-    } else if (localData.files['requirements.txt'] || localData.files['setup.py']) {
+    } else if (localData.fileContents['requirements.txt'] || localData.fileContents['setup.py']) {
       detectedLanguage = 'Python';
-    } else if (localData.files['Cargo.toml']) {
+    } else if (localData.fileContents['Cargo.toml']) {
       detectedLanguage = 'Rust';
     }
     
