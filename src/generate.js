@@ -20,137 +20,24 @@ const {
 /**
  * Build a comprehensive AI prompt for README generation
  */
-function buildAIPrompt(githubData, localData, badges) {
-  let prompt = `Please generate a comprehensive README.md content for this project. Use the following information to create relevant and accurate sections:
-
-`;
-
-  // GitHub repository information
-  if (githubData) {
-    prompt += `## Repository Information:
-- Name: ${githubData.name}
-- Full Name: ${githubData.fullName}
-- Description: ${githubData.description || 'No description provided'}
-- Primary Language: ${githubData.language}
-- Stars: ${githubData.stars}
-- Forks: ${githubData.forks}
-- License: ${githubData.license || 'No license specified'}
-- Topics: ${githubData.topics.length > 0 ? githubData.topics.join(', ') : 'None'}
-- Homepage: ${githubData.homepageUrl || 'None'}
-- Has Issues: ${githubData.hasIssues ? 'Yes' : 'No'}
-- Has Wiki: ${githubData.hasWiki ? 'Yes' : 'No'}
-- Has Pages: ${githubData.hasPages ? 'Yes' : 'No'}
-
-`;
+function buildAIPrompt(githubData, localData, badges, extraPrompt = '') {
+  let prompt = `Please generate a comprehensive README.md for this project.\n\n- Analyze the provided files and metadata to determine the project type (e.g., CLI tool, library, backend, frontend, website, or any other type).\n- Adapt the Usage section and other content to fit the detected project type, showing only the most relevant usage examples and instructions.\n- If the user provides extra instructions, follow them and override the default style or detail as needed.\n\nDO NOT include the badges in your response - they will be prepended automatically.\n\nGenerate only the README content, starting with the project title as an H1 header.`;
+  if (extraPrompt && extraPrompt.trim()) {
+    prompt += `\n\nUser extra instructions: ${extraPrompt.trim()}`;
   }
-
-  // Local project analysis
-  if (localData) {
-    prompt += `## Local Project Analysis:
-- Project Type: ${localData.projectType}
-- Base Path: ${localData.basePath}
-
-### Project Summary:
-${localData.summary.length > 0 ? localData.summary.map(s => `- ${s}`).join('\n') : '- No specific project patterns detected'}
-
-### Detected Files:
-`;
-
-    Object.entries(localData.files).forEach(([fileName, fileData]) => {
-      prompt += `\n**${fileName}:**\n`;
-      
-      if (fileName === 'package.json') {
-        prompt += `- Name: ${fileData.name || 'Not specified'}\n`;
-        prompt += `- Description: ${fileData.description || 'Not specified'}\n`;
-        prompt += `- Version: ${fileData.version || 'Not specified'}\n`;
-        
-        if (fileData.scripts && Object.keys(fileData.scripts).length > 0) {
-          prompt += `- Available scripts: ${Object.keys(fileData.scripts).join(', ')}\n`;
-        }
-        
-        if (fileData.dependencies && fileData.dependencies.length > 0) {
-          prompt += `- Dependencies: ${fileData.dependencies.length} packages\n`;
-        }
-      } else if (fileName === 'Makefile') {
-        prompt += `- Available targets: ${fileData.targets.join(', ')}\n`;
-        prompt += `- Common targets: `;
-        const commonTargets = Object.entries(fileData.commonTargets)
-          .filter(([_, hasTarget]) => hasTarget)
-          .map(([target, _]) => target.replace('has', '').toLowerCase());
-        prompt += commonTargets.length > 0 ? commonTargets.join(', ') : 'none';
-        prompt += '\n';
-      } else if (fileName === 'Dockerfile') {
-        prompt += `- Base image: ${fileData.baseImage || 'Not specified'}\n`;
-        if (fileData.exposedPort) {
-          prompt += `- Exposed port: ${fileData.exposedPort}\n`;
-        }
-        prompt += `- Has entrypoint: ${fileData.hasEntrypoint ? 'Yes' : 'No'}\n`;
-      } else if (fileName === 'requirements.txt') {
-        prompt += `- Python dependencies: ${fileData.dependencies.length} packages\n`;
-      } else if (fileName === 'setup.py') {
-        prompt += `- Package name: ${fileData.name || 'Not specified'}\n`;
-        prompt += `- Version: ${fileData.version || 'Not specified'}\n`;
-        prompt += `- Author: ${fileData.author || 'Not specified'}\n`;
-      } else if (fileName === 'Cargo.toml') {
-        prompt += `- Package name: ${fileData.name || 'Not specified'}\n`;
-        prompt += `- Version: ${fileData.version || 'Not specified'}\n`;
-        prompt += `- Rust edition: ${fileData.edition || 'Not specified'}\n`;
-      }
-    });
-  }
-
-  // Instructions for AI
-  prompt += `
-
-## Instructions:
-Please generate a professional README.md that includes the following sections (adapt based on the project type and available information):
-
-1. **Project Title** - Use the repository name or package name
-2. **Description** - A compelling description based on the repository description and detected project type
-3. **Features** - List key features based on the project analysis (be specific and realistic)
-4. **Prerequisites** - List any requirements based on detected technologies
-5. **Installation** - Provide installation instructions based on the project type:
-   - For Node.js projects: npm/yarn installation
-   - For Python projects: pip installation or virtual environment setup
-   - For Rust projects: cargo build instructions
-   - For Dockerized projects: Docker instructions
-   - Use Makefile targets if available
-6. **Usage** - Provide usage examples based on:
-   - Available npm scripts
-   - Makefile targets
-   - Docker usage if Dockerfile is present
-   - Command-line usage if it's a CLI tool
-7. **API Documentation** - If the project appears to be a library or API
-8. **Contributing** - Standard contributing guidelines
-9. **License** - Reference the detected license
-
-## Important Guidelines:
-- Write in a professional, clear, and engaging tone
-- Be specific about installation and usage instructions
-- Don't invent features that aren't evident from the analysis
-- Use appropriate markdown formatting
-- Include code blocks for installation and usage examples
-- Make the content informative and helpful for developers
-- If certain information is missing, provide placeholder text or general guidance
-- Focus on making the README useful for someone discovering the project for the first time
-
-DO NOT include the badges in your response - they will be prepended automatically.
-
-Generate only the README content, starting with the project title as an H1 header.`;
-
   return prompt;
 }
 
 /**
  * Call the AI service to generate README content
  */
-async function generateReadmeContent(githubData, localData, badges) {
+async function generateReadmeContent(githubData, localData, badges, extraPrompt = '') {
   try {
     printInfo('Generating README content with AI...');
     
     const apiKey = await getApiKey();
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = buildAIPrompt(githubData, localData, badges);
+    const prompt = buildAIPrompt(githubData, localData, badges, extraPrompt);
     const response = await ai.models.generateContent({
       model: "gemini-1.5-flash",
       contents: prompt
@@ -171,11 +58,11 @@ async function generateReadmeContent(githubData, localData, badges) {
 /**
  * Main docify function that orchestrates README generation
  */
-async function docify(url = null, isDryRun = false) {
+async function docify(url = null, isDryRun = false, extraPrompt = '') {
   try {
     let githubData = null;
     let localData = null;
-    let workingDir = process.cwd();
+    const workingDir = process.cwd();
     
     console.log(chalk.blue('🔍 Analyzing project...'));
     
@@ -229,7 +116,7 @@ async function docify(url = null, isDryRun = false) {
     
     // Generate README content with AI
     console.log(chalk.blue('🤖 Generating README content...'));
-    const readmeContent = await generateReadmeContent(githubData, localData, [...importantBadges, ...otherBadges]);
+    const readmeContent = await generateReadmeContent(githubData, localData, [...importantBadges, ...otherBadges], extraPrompt);
     
     // Combine badges and AI-generated content
     const finalContent = badgesMarkdown + readmeContent;

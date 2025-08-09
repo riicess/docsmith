@@ -33,11 +33,17 @@ async function main() {
               type: 'boolean',
               description: 'Print output to console instead of writing to file',
               default: false,
+            })
+            .option('extraprompt', {
+              alias: 'e',
+              type: 'string',
+              description: 'Extra instructions for the AI to customize the README',
+              default: '',
             });
         },
         async (argv) => {
           console.log(chalk.blue('📚 Generating README.md...'));
-          await docify(argv.url, argv.dryRun);
+          await docify(argv.url, argv.dryRun, argv.extraprompt);
         }
       )
       .example('$0 configure', 'Set up your API key')
