@@ -139,7 +139,9 @@ async function docify(url = null, isDryRun = false, extraPrompt = '', debug = fa
     const readmeContent = await generateReadmeContent(githubData, localData, badges, extraPrompt, debug);
     
     // Combine badges and AI-generated content
-    const finalContent = badgesMarkdown + readmeContent;
+    const readmeLines = readmeContent.split('\n');
+    readmeLines.splice(1, 0, badgesMarkdown);
+    const finalContent = readmeLines.join('\n');
     
     if (isDryRun) {
       // Dry run - output to console
