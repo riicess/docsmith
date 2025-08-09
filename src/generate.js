@@ -131,11 +131,12 @@ async function docify(url = null, isDryRun = false, extraPrompt = '', debug = fa
     // Generate badges
     console.log(chalk.blue('Generating badges...'));
     const { importantBadges, otherBadges } = generateAllBadges(githubData, localData, {}); // Pass options if needed
+    const badges = [...importantBadges, ...otherBadges];
     const badgesMarkdown = formatBadgesMarkdown({ importantBadges, otherBadges });
     
     // Generate README content with AI
     console.log(chalk.blue('🤖 Generating README content...'));
-    const readmeContent = await generateReadmeContent(githubData, localData, [...importantBadges, ...otherBadges], extraPrompt, debug);
+    const readmeContent = await generateReadmeContent(githubData, localData, badges, extraPrompt, debug);
     
     // Combine badges and AI-generated content
     const finalContent = badgesMarkdown + readmeContent;
