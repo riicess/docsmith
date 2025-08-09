@@ -21,7 +21,19 @@ const {
  * Build a comprehensive AI prompt for README generation
  */
 function buildAIPrompt(githubData, localData, badges, extraPrompt = '') {
-  let prompt = `Please generate a comprehensive README.md for this project.\n\n- Analyze the provided files and metadata to determine the project type (e.g., CLI tool, library, backend, frontend, website, or any other type).\n- Adapt the Usage section and other content to fit the detected project type, showing only the most relevant usage examples and instructions.\n- If the user provides extra instructions, follow them and override the default style or detail as needed.\n\nDO NOT include the badges in your response - they will be prepended automatically.\n\nGenerate only the README content, starting with the project title as an H1 header.`;
+  // Gather project metadata for the prompt
+  let metadataSection = '';
+  if (githubData) {
+    metadataSection += `GitHub Metadata:\nName: ${githubData.name}\nDescription: ${githubData.description}\nStars: ${githubData.stars}\nForks: ${githubData.forks}\nLanguage: ${githubData.language}\nLicense: ${githubData.license}\nTopics: ${(githubData.topics || []).join(', ')}\n`;
+  }
+  if (localData && localData.files && localData.files['package.json']) {
+    const pkg = localData.files['package.json'];
+    metadataSection += `\npackage.json:\nName: ${pkg.name}\nDescription: ${pkg.description}\nVersion: ${pkg.version}\nScripts: ${Object.keys(pkg.scripts || {}).join(', ')}\nDependencies: ${(pkg.dependencies || []).join(', ')}\n`;
+  }
+  if (localData && localData.summary && localData.summary.length > 0) {
+    metadataSection += `\nProject Summary:\n${localData.summary.join('\n')}\n`;
+  }
+  let prompt = `Please generate a comprehensive README.md for this project.\n\n${metadataSection}\n- Use only the provided project metadata and files. Do not invent features or commands that are not present in the data.\n- Analyze the provided files and metadata to determine the project type (e.g., CLI tool, library, backend, frontend, website, or any other type).\n- Adapt the Usage section and other content to fit the detected project type, showing only the most relevant usage examples and instructions.\n- If the user provides extra instructions, follow them and override the default style or detail as needed.\n\nDO NOT include the badges in your response - they will be prepended automatically.\n\nGenerate only the README content, starting with the project title as an H1 header.`;
   if (extraPrompt && extraPrompt.trim()) {
     prompt += `\n\nUser extra instructions: ${extraPrompt.trim()}`;
   }
@@ -31,10 +43,17 @@ function buildAIPrompt(githubData, localData, badges, extraPrompt = '') {
 /**
  * Call the AI service to generate README content
  */
-async function generateReadmeContent(githubData, localData, badges, extraPrompt = '') {
+async function generateReadmeContent(githubData, localData, badges, extraPrompt = '', debug = false) {
   try {
     printInfo('Generating README content with AI...');
-    
+    if (debug) {
+      console.log('\n===== AI PROMPT DEBUG INFO =====');
+      console.log('GitHub Data:', JSON.stringify(githubData, null, 2));
+      console.log('Local Data:', JSON.stringify(localData, null, 2));
+      const prompt = buildAIPrompt(githubData, localData, badges, extraPrompt);
+      console.log('Prompt Sent to AI:\n', prompt);
+      console.log('===== END DEBUG INFO =====\n');
+    }
     const apiKey = await getApiKey();
     const ai = new GoogleGenAI({ apiKey });
     const prompt = buildAIPrompt(githubData, localData, badges, extraPrompt);
@@ -58,7 +77,7 @@ async function generateReadmeContent(githubData, localData, badges, extraPrompt 
 /**
  * Main docify function that orchestrates README generation
  */
-async function docify(url = null, isDryRun = false, extraPrompt = '') {
+async function docify(url = null, isDryRun = false, extraPrompt = '', debug = false) {
   try {
     let githubData = null;
     let localData = null;
@@ -116,7 +135,7 @@ async function docify(url = null, isDryRun = false, extraPrompt = '') {
     
     // Generate README content with AI
     console.log(chalk.blue('🤖 Generating README content...'));
-    const readmeContent = await generateReadmeContent(githubData, localData, [...importantBadges, ...otherBadges], extraPrompt);
+    const readmeContent = await generateReadmeContent(githubData, localData, [...importantBadges, ...otherBadges], extraPrompt, debug);
     
     // Combine badges and AI-generated content
     const finalContent = badgesMarkdown + readmeContent;

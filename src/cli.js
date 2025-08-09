@@ -39,11 +39,17 @@ async function main() {
               type: 'string',
               description: 'Extra instructions for the AI to customize the README',
               default: '',
+            })
+            .option('debug', {
+              alias: 'D',
+              type: 'boolean',
+              description: 'Enable debug output',
+              default: false,
             });
         },
         async (argv) => {
           console.log(chalk.blue('📚 Generating README.md...'));
-          await docify(argv.url, argv.dryRun, argv.extraprompt);
+          await docify(argv.url, argv.dryRun, argv.extraprompt, argv.debug);
         }
       )
       .example('$0 configure', 'Set up your API key')
