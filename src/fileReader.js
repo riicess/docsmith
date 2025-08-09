@@ -8,7 +8,8 @@ const ignore = [
   '.*\\.log$',
   'dist',
   'build',
-  'coverage'
+  'coverage',
+  '^\\.env.*'
 ];
 
 /**
