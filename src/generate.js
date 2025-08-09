@@ -150,7 +150,7 @@ async function generateReadmeContent(githubData, localData, badges) {
     
     const apiKey = await getApiKey();
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     
     const prompt = buildAIPrompt(githubData, localData, badges);
     
@@ -226,9 +226,9 @@ async function docify(url = null, isDryRun = false) {
     }
     
     // Generate badges
-    console.log(chalk.blue('🏷️  Generating badges...'));
-    const badges = generateAllBadges(githubData, localData);
-    const badgesMarkdown = formatBadgesMarkdown(badges);
+    console.log(chalk.blue('Generating badges...'));
+    const { importantBadges, otherBadges } = generateAllBadges(githubData, localData, {}); // Pass options if needed
+    const badgesMarkdown = formatBadgesMarkdown({ importantBadges, otherBadges });
     
     // Generate README content with AI
     console.log(chalk.blue('🤖 Generating README content...'));

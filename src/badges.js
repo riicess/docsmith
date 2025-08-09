@@ -5,10 +5,11 @@
 /**
  * Generate GitHub Stars badge
  */
-function generateStarsBadge(repoFullName, stars) {
+function generateStarsBadge(repoFullName, stars, options = {}) {
   if (!repoFullName || stars === undefined) return '';
   
-  const badgeUrl = `https://img.shields.io/github/stars/${repoFullName}?style=flat-square&logo=github`;
+  const style = options.style || 'flat-square';
+  const badgeUrl = `https://img.shields.io/github/stars/${repoFullName}?style=${style}&logo=github`;
   const repoUrl = `https://github.com/${repoFullName}/stargazers`;
   
   return `[![GitHub Stars](${badgeUrl})](${repoUrl})`;
@@ -17,12 +18,13 @@ function generateStarsBadge(repoFullName, stars) {
 /**
  * Generate License badge
  */
-function generateLicenseBadge(license) {
+function generateLicenseBadge(license, options = {}) {
   if (!license) return '';
   
+  const style = options.style || 'flat-square';
   // Encode license name for URL
   const encodedLicense = encodeURIComponent(license);
-  const badgeUrl = `https://img.shields.io/badge/license-${encodedLicense}-blue?style=flat-square`;
+  const badgeUrl = `https://img.shields.io/badge/license-${encodedLicense}-blue?style=${style}`;
   
   return `![License](${badgeUrl})`;
 }
@@ -76,21 +78,22 @@ function generateLastCommitBadge(repoFullName) {
 /**
  * Generate Version badge from package.json or other version sources
  */
-function generateVersionBadge(version, packageManager = 'npm', packageName = null) {
+function generateVersionBadge(version, packageManager = 'npm', packageName = null, options = {}) {
   if (!version) return '';
   
+  const style = options.style || 'flat-square';
   let badgeUrl;
   let linkUrl = '';
   
   if (packageManager === 'npm' && packageName) {
-    badgeUrl = `https://img.shields.io/npm/v/${packageName}?style=flat-square&logo=npm`;
+    badgeUrl = `https://img.shields.io/npm/v/${packageName}?style=${style}&logo=npm`;
     linkUrl = `https://www.npmjs.com/package/${packageName}`;
   } else if (packageManager === 'pypi' && packageName) {
-    badgeUrl = `https://img.shields.io/pypi/v/${packageName}?style=flat-square&logo=pypi`;
+    badgeUrl = `https://img.shields.io/pypi/v/${packageName}?style=${style}&logo=pypi`;
     linkUrl = `https://pypi.org/project/${packageName}/`;
   } else {
     // Generic version badge
-    badgeUrl = `https://img.shields.io/badge/version-${encodeURIComponent(version)}-blue?style=flat-square`;
+    badgeUrl = `https://img.shields.io/badge/version-${encodeURIComponent(version)}-blue?style=${style}`;
   }
   
   return linkUrl ? 
@@ -123,16 +126,56 @@ function generateBuildBadge(repoFullName, hasCi = false) {
 }
 
 /**
+ * AI-driven function to select the best Shields.io style for the repo
+ */
+function selectBestBadgeStyle({ repoType, isLibrary, isApp, isPopular }) {
+  // Heuristic: use 'for-the-badge' for popular repos, 'flat-square' for libraries, 'flat' for apps, 'plastic' for legacy, 'social' for social focus
+  if (isPopular) return 'for-the-badge';
+  if (isLibrary) return 'flat-square';
+  if (isApp) return 'flat';
+  if (repoType === 'legacy') return 'plastic';
+  return 'flat-square'; // default
+}
+
+/**
+ * General Shields.io badge generator with customization
+ */
+function generateShieldsBadge({ label, message, color = 'blue', style = 'flat-square', logo, link }) {
+  let url = `https://img.shields.io/badge/${encodeURIComponent(label)}-${encodeURIComponent(message)}-${color}?style=${style}`;
+  if (logo) url += `&logo=${encodeURIComponent(logo)}`;
+  const markdown = `![${label}](${url})`;
+  return link ? `[${markdown}](${link})` : markdown;
+}
+
+/**
  * Generate all relevant badges for a repository
  */
-function generateAllBadges(githubData = null, localData = null) {
+function generateAllBadges(githubData = null, localData = null, options = {}) {
   const badges = [];
-  
+  const importantBadges = [];
+  // AI-driven style selection
+  const style = options.style || selectBestBadgeStyle({
+    repoType: githubData?.repoType,
+    isLibrary: localData?.isLibrary,
+    isApp: localData?.isApp,
+    isPopular: githubData?.stars > 1000
+  });
+  const badgeOpts = { ...options, style };
+  // Important badges
+  if (githubData) {
+    const starsBadge = generateStarsBadge(githubData.fullName, githubData.stars, badgeOpts);
+    if (starsBadge) importantBadges.push(starsBadge);
+    const licenseBadge = generateLicenseBadge(githubData.license, badgeOpts);
+    if (licenseBadge) importantBadges.push(licenseBadge);
+  }
+  if (localData && localData.files && localData.files['package.json']) {
+    const pkg = localData.files['package.json'];
+    const versionBadge = generateVersionBadge(pkg.version, 'npm', pkg.name, badgeOpts);
+    if (versionBadge) importantBadges.push(versionBadge);
+  }
+  // Other badges (add more as needed)
   // GitHub-specific badges
   if (githubData) {
-    const starsBadge = generateStarsBadge(githubData.fullName, githubData.stars);
-    if (starsBadge) badges.push(starsBadge);
-    
     const forksBadge = generateForksBadge(githubData.fullName, githubData.forks);
     if (forksBadge) badges.push(forksBadge);
     
@@ -142,30 +185,12 @@ function generateAllBadges(githubData = null, localData = null) {
     const lastCommitBadge = generateLastCommitBadge(githubData.fullName);
     if (lastCommitBadge) badges.push(lastCommitBadge);
     
-    const licenseBadge = generateLicenseBadge(githubData.license);
-    if (licenseBadge) badges.push(licenseBadge);
-    
     const languageBadge = generateLanguageBadge(githubData.language);
     if (languageBadge) badges.push(languageBadge);
   }
   
   // Local project badges
   if (localData) {
-    // Version badge
-    if (localData.files && localData.files['package.json']) {
-      const pkg = localData.files['package.json'];
-      const versionBadge = generateVersionBadge(pkg.version, 'npm', pkg.name);
-      if (versionBadge) badges.push(versionBadge);
-    } else if (localData.files && localData.files['setup.py']) {
-      const setup = localData.files['setup.py'];
-      const versionBadge = generateVersionBadge(setup.version, 'pypi', setup.name);
-      if (versionBadge) badges.push(versionBadge);
-    } else if (localData.files && localData.files['Cargo.toml']) {
-      const cargo = localData.files['Cargo.toml'];
-      const versionBadge = generateVersionBadge(cargo.version);
-      if (versionBadge) badges.push(versionBadge);
-    }
-    
     // Docker badge
     const dockerBadge = generateDockerBadge(!!localData.files['Dockerfile']);
     if (dockerBadge) badges.push(dockerBadge);
@@ -189,28 +214,21 @@ function generateAllBadges(githubData = null, localData = null) {
     }
   }
   
-  return badges;
+  return { importantBadges, otherBadges: badges };
 }
 
 /**
  * Format badges into markdown
  */
-function formatBadgesMarkdown(badges) {
-  if (!badges || badges.length === 0) {
-    return '';
+function formatBadgesMarkdown({ importantBadges, otherBadges }) {
+  let md = '';
+  if (importantBadges && importantBadges.length > 0) {
+    md += importantBadges.join(' ') + '\n\n';
   }
-  
-  // Join badges with spaces and add line breaks for better formatting
-  const badgeLines = [];
-  
-  // Group badges in rows of 3-4 for better visual layout
-  const maxPerRow = 4;
-  for (let i = 0; i < badges.length; i += maxPerRow) {
-    const rowBadges = badges.slice(i, i + maxPerRow);
-    badgeLines.push(rowBadges.join(' '));
+  if (otherBadges && otherBadges.length > 0) {
+    md += otherBadges.join(' ') + '\n\n';
   }
-  
-  return badgeLines.join('\n\n') + '\n\n';
+  return md;
 }
 
 module.exports = {
@@ -224,5 +242,7 @@ module.exports = {
   generateDockerBadge,
   generateBuildBadge,
   generateAllBadges,
-  formatBadgesMarkdown
+  formatBadgesMarkdown,
+  selectBestBadgeStyle,
+  generateShieldsBadge
 };

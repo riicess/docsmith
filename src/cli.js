@@ -47,6 +47,7 @@ async function main() {
       .help('h')
       .alias('h', 'help')
       .version()
+      .showHelpOnFail(false)
       .demandCommand(1, chalk.red('❌ You need to specify a command. Use --help to see available commands.'))
       .parse();
   } catch (error) {

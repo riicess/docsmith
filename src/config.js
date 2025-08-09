@@ -27,7 +27,7 @@ async function configureApiKey() {
     console.log(chalk.yellow('🔑 API Key Configuration'));
     console.log(chalk.gray('To use docsmith, you need to provide an API key for AI content generation.'));
     console.log(chalk.gray('Currently supported: Google Gemini API'));
-    console.log(chalk.gray('Get your free API key at: https://makersuite.google.com/app/apikey\n'));
+    console.log(chalk.gray('Get your free API key at: https://aistudio.google.com/app/apikey\n'));
 
     const answers = await inquirer.prompt([
       {

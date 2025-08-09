@@ -27,6 +27,12 @@ DocSmith is a Node.js CLI tool that generates comprehensive README.md files for 
 npm install -g docsmith
 ```
 
+### Install Globally from GitHub
+
+```bash
+npm install -g git+https://github.com/riicess/docsmith.git
+```
+
 ### Install Locally
 
 ```bash
