@@ -9,7 +9,8 @@ const ignore = [
   'dist',
   'build',
   'coverage',
-  '^\\.env.*'
+  '^\\.env.*',
+  'README.md'
 ];
 
 /**
