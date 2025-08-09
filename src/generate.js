@@ -232,7 +232,7 @@ async function docify(url = null, isDryRun = false) {
     
     // Generate README content with AI
     console.log(chalk.blue('🤖 Generating README content...'));
-    const readmeContent = await generateReadmeContent(githubData, localData, badges);
+    const readmeContent = await generateReadmeContent(githubData, localData, [...importantBadges, ...otherBadges]);
     
     // Combine badges and AI-generated content
     const finalContent = badgesMarkdown + readmeContent;
