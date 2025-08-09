@@ -109,3 +109,6 @@ tests/
 __tests__/
 *.test.js
 *.spec.js
+
+# node modules
+node_modules/
