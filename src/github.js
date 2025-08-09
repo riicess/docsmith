@@ -1,5 +1,6 @@
 const axios = require('axios');
 const chalk = require('chalk');
+const { simpleGit } = require('simple-git');
 
 /**
  * Parse a GitHub URL to extract owner and repository name
@@ -138,9 +139,24 @@ async function checkRepoExists(url) {
   }
 }
 
+/**
+ * Clone a repository to a temporary directory
+ */
+async function cloneRepo(url, tempDir) {
+  const git = simpleGit();
+  try {
+    console.log(chalk.gray(`Cloning repository from ${url}...`));
+    await git.clone(url, tempDir, ['--depth=1']);
+    console.log(chalk.gray('Repository cloned successfully.'));
+  } catch (error) {
+    throw new Error(`Failed to clone repository: ${error.message}`);
+  }
+}
+
 module.exports = {
   parseGitHubUrl,
   fetchRepoMetadata,
   getCurrentRepoUrl,
-  checkRepoExists
+  checkRepoExists,
+  cloneRepo
 };
